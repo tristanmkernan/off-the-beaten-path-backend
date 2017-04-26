@@ -19,8 +19,7 @@ import math
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = \
-                        'mysql+pymysql://root:python@localhost/otbp'
+app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('OTBP_DATABASE_URI')
 app.config['DEFAULT_PAGINATION_PAGE_LENGTH'] = 10
 app.config['POST_SCHEMA'] = {
     "schema": "http://json-schema.org/draft-04/schema#",
@@ -54,9 +53,9 @@ DEGREES(ACOS(COS(RADIANS(%s)) * COS(RADIANS(lat)) *
 '''
 
 cloudinary.config(
-    cloud_name=environ.get('OTBP-CLOUDINARY_CLOUD_NAME'),
-    api_key=environ.get('OTBP-CLOUDINARY_API_KEY'),
-    api_secret=environ.get('OTBP-CLOUDINARY_API_SECRET')
+    cloud_name=environ.get('OTBP_CLOUDINARY_CLOUD_NAME'),
+    api_key=environ.get('OTBP_CLOUDINARY_API_KEY'),
+    api_secret=environ.get('OTBP_CLOUDINARY_API_SECRET')
 )
 
 
@@ -237,4 +236,4 @@ def upload_photo():
 
 
 if __name__ == '__main__':
-    app.run(debug=environ.get('OTBP-DEBUG_MODE', False))
+    app.run(debug=environ.get('OTBP_DEBUG_MODE', False))
