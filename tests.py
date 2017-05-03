@@ -101,17 +101,28 @@ class AppTestCase(unittest.TestCase):
             self.assertDictEqual(easy_pagination.toSimpleDict(), rv_json)
 
     def test_get_target_by_location(self):
-        # create a target, then create a post
+        # create a target
         with my_app.app.app_context():
             self.assertEqual(my_app.TargetLocation.query.count(), 0)
 
-            self.fail("finish the test by moving sql math to python")
-            
             rv = self.app.get('/target/1,1')
 
             self.assertEqual(my_app.TargetLocation.query.count(), 1)
 
+            # confirm that the target is within the min, max distance
+            rv_json = json.loads(rv.get_data())
+            target_json = rv_json['position']
+            target_lat, target_lng = target_json['lat'], target_json['lng']
             
+            target_location = my_app.TargetLocation(lat=target_lat, lng=target_lng)
+            source_location = my_app.TargetLocation(lat=1, lng=1)
+
+            # test whether the distance is in the allowed range
+            distance = my_app._haversine(target_location, source_location)
+
+            self.assertLess(distance, my_app.app.config['TARGET_MAX_DISTANCE'])
+            self.assertGreater(distance, my_app.app.config['TARGET_MIN_DISTANCE'])
+
 
 if __name__ == '__main__':
     unittest.main()

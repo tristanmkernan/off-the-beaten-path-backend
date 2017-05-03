@@ -5,6 +5,7 @@ from flask_cors import CORS
 
 from jsonschema import validate
 
+from geopy import Point
 from geopy.distance import vincenty
 
 import cloudinary
@@ -15,7 +16,6 @@ from datetime import datetime
 from os import environ
 
 import random
-import math
 
 app = Flask(__name__)
 
@@ -45,12 +45,6 @@ app.config['TARGET_MAX_DISTANCE'] = 200
 
 CORS(app)
 db = SQLAlchemy(app)
-
-SQL_DISTANCE_FORMULA = '''
-DEGREES(ACOS(COS(RADIANS(%s)) * COS(RADIANS(lat)) *
-             COS(RADIANS(%s) - RADIANS(lng)) +
-             SIN(RADIANS(%s)) * SIN(RADIANS(lat))))
-'''
 
 cloudinary.config(
     cloud_name=environ.get('OTBP_CLOUDINARY_CLOUD_NAME'),
@@ -142,40 +136,39 @@ def index():
 def get_target_by_location(location):
     # location should be in format `lat,lng`
     source_lat, source_lng = list(map(lambda x: float(x), location.split(',')))
+    source_location = TargetLocation(lat=source_lat, lng=source_lng)
 
     # attempt to find an existing location
-    target_or_none = TargetLocation.query \
+    target_list = TargetLocation.query \
         .filter(
             # check for results created today
             func.date(TargetLocation.created_at) == func.current_date()
         ) \
-        .order_by(
-            SQL_DISTANCE_FORMULA % (source_lat, source_lng, source_lat)
-        ) \
-        .first()
+        .all()
 
-    if target_or_none is not None:
+    sorted_target_list = sorted(target_list,
+                                key=lambda t: _haversine(source_location, t))
+    if len(sorted_target_list) > 0:
+        target = sorted_target_list[0]
+
         haversine_distance = _haversine(
-            target_or_none,
-            TargetLocation(lat=source_lat, lng=source_lng))
+            target,
+            source_location)
 
         if haversine_distance < app.config['TARGET_MAX_DISTANCE']:
-            return jsonify(target_or_none.toSimpleDict())
+            return jsonify(target.toSimpleDict())
 
-    # naively create a target between 500 to 1500 m away from current location
+    # naively create a target between MIN to MAX m away from current location
     angle = random.randint(1, 360)
-    distance = random.randint(app.config['TARGET_MIN_DISTANCE'],
-                              app.config['TARGET_MAX_DISTANCE'])
+    pdistance = random.randint(app.config['TARGET_MIN_DISTANCE'],
+                               app.config['TARGET_MAX_DISTANCE'])
+    pdistance /= 1000
 
-    delta_x_meters, delta_y_meters = \
-        distance * math.sin(math.pi * angle / 180), \
-        distance * math.cos(math.pi * angle / 180)
+    target_lat, target_lng, alt = vincenty(kilometers=pdistance) \
+        .destination(Point(source_lat, source_lng), angle)
 
-    delta_lat, delta_lng = \
-        delta_x_meters * 360 / 40008000, \
-        delta_y_meters * 360 / (40075160 * math.cos(source_lat))
-    target_location = TargetLocation(lat=source_lat + delta_lat,
-                                     lng=source_lng + delta_lng)
+    target_location = TargetLocation(lat=target_lat,
+                                     lng=target_lng)
 
     db.session.add(target_location)
     db.session.commit()
