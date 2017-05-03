@@ -40,8 +40,8 @@ app.config['POST_SCHEMA'] = {
     },
     "required": ["text", "location"]
 }
-app.config['TARGET_MIN_DISTANCE'] = 500
-app.config['TARGET_MAX_DISTANCE'] = 1500
+app.config['TARGET_MIN_DISTANCE'] = 100
+app.config['TARGET_MAX_DISTANCE'] = 200
 
 CORS(app)
 db = SQLAlchemy(app)
