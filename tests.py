@@ -1,7 +1,5 @@
-import os
 import app as my_app
 import unittest
-import tempfile
 import json
 
 
@@ -122,6 +120,26 @@ class AppTestCase(unittest.TestCase):
 
             self.assertLess(distance, my_app.app.config['TARGET_MAX_DISTANCE'])
             self.assertGreater(distance, my_app.app.config['TARGET_MIN_DISTANCE'])
+
+    def test_get_existing_target_by_location(self):
+        # create a target
+        with my_app.app.app_context():
+            self.assertEqual(my_app.TargetLocation.query.count(), 0)
+
+            # create the existing location
+            rv = self.app.get('/target/1,1')
+
+            self.assertEqual(my_app.TargetLocation.query.count(), 1)
+
+            # now hit the endpoint again, should return same target
+            rv = self.app.get('/target/1,1')
+
+            self.assertEqual(my_app.TargetLocation.query.count(), 1)
+
+    @unittest.skip
+    def test_get_target_returns_metadata(self):
+        # get target should return total visitors, average visitors
+        self.fail("finish me!")
 
 
 if __name__ == '__main__':
